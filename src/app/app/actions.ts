@@ -331,8 +331,8 @@ export async function toggleHabitDashboardAction(
   habitId: string,
   logDate: string,
   completed: boolean
-) {
-  if (!isSupabaseConfigured()) return { success: false }
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: false, error: 'Supabase not configured' }
 
   try {
     const supabase = await createClient()
@@ -341,6 +341,18 @@ export async function toggleHabitDashboardAction(
     } = await supabase.auth.getUser()
 
     if (!user) return { success: false, error: 'Unauthorized' }
+
+    // Ownership check: ensure habit belongs to current user
+    const { data: habit, error: habitErr } = await supabase
+      .from('habits')
+      .select('id')
+      .eq('id', habitId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (habitErr || !habit) {
+      return { success: false, error: 'Habit not found or unauthorized' }
+    }
 
     if (completed) {
       const { error } = await supabase.from('habit_logs').upsert(
@@ -352,7 +364,7 @@ export async function toggleHabitDashboardAction(
           completed: true,
           completed_at: new Date().toISOString(),
         },
-        { onConflict: 'user_id,habit_id,log_date' }
+        { onConflict: 'habit_id,log_date' }
       )
       if (error) throw error
     } else {

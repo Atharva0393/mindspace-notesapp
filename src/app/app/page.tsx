@@ -172,6 +172,7 @@ export default function DeskOverviewPage() {
 
   // Handlers
   function handleToggleHabit(habitId: string) {
+    const previousLogs = logs
     const isCompleted = logs.some(
       (l) => l.habitId === habitId && l.logDate === todayStr && l.completed
     )
@@ -181,10 +182,6 @@ export default function DeskOverviewPage() {
       updatedLogs = logs.filter(
         (l) => !(l.habitId === habitId && l.logDate === todayStr)
       )
-      toast({
-        title: 'Habit unmarked',
-        description: 'Today’s completion has been removed.',
-      })
     } else {
       const newLog: HabitLog = {
         id: `log-${Date.now()}`,
@@ -196,21 +193,51 @@ export default function DeskOverviewPage() {
         completedAt: new Date().toISOString(),
       }
       updatedLogs = [...logs, newLog]
-      toast({
-        title: 'Habit sustained! 🔥',
-        description: 'Keep the momentum going strong.',
-        variant: 'success',
-      })
     }
 
+    // Optimistically update local UI state immediately
     setLogs(updatedLogs)
 
     if (isCloudSynced) {
       startTransition(async () => {
-        await toggleHabitDashboardAction(habitId, todayStr, !isCompleted)
+        const res = await toggleHabitDashboardAction(habitId, todayStr, !isCompleted)
+        if (!res?.success) {
+          // Roll back optimistic state on failure
+          setLogs(previousLogs)
+          toast({
+            title: 'Failed to update habit',
+            description: res?.error || 'Could not sync habit completion with cloud.',
+            variant: 'error',
+          })
+        } else {
+          if (!isCompleted) {
+            toast({
+              title: 'Habit sustained! 🔥',
+              description: 'Keep the momentum going strong.',
+              variant: 'success',
+            })
+          } else {
+            toast({
+              title: 'Habit unmarked',
+              description: 'Today’s completion has been removed.',
+            })
+          }
+        }
       })
     } else {
       saveLocalHabitLogs(updatedLogs)
+      if (!isCompleted) {
+        toast({
+          title: 'Habit sustained! 🔥',
+          description: 'Keep the momentum going strong.',
+          variant: 'success',
+        })
+      } else {
+        toast({
+          title: 'Habit unmarked',
+          description: 'Today’s completion has been removed.',
+        })
+      }
     }
   }
 
