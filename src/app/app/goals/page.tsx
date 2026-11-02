@@ -52,7 +52,7 @@ export default function GoalsPage() {
         const res = await getGoalsData()
         setIsConfigured(res.isConfigured)
 
-        if (res.isConfigured && res.goals.length > 0) {
+        if (res.isAuthenticated) {
           setGoals(res.goals)
         } else {
           setGoals(getLocalGoals())

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import {
   Sparkles,
@@ -15,6 +15,7 @@ import {
   Check,
   Star,
   BookOpen,
+  StickyNote,
 } from 'lucide-react'
 import { PastelBadge } from '@/components/ui/pastel-badge'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,13 @@ import { Habit, HabitLog } from '@/types/habits'
 import { Task, Goal } from '@/types/tasks'
 import { DailyPlan, TimeBlock } from '@/types/planner'
 import { JournalEntry, MoodLog, MOOD_DEFINITIONS } from '@/types/journal'
+import { useCurrentUser } from '@/components/layout/user-context'
+import {
+  getDashboardData,
+  saveIntentionDashboardAction,
+  toggleHabitDashboardAction,
+  toggleTaskDashboardAction,
+} from './actions'
 import {
   getLocalHabits,
   getLocalHabitLogs,
@@ -44,6 +52,8 @@ import { cn } from '@/lib/utils'
 
 export default function DeskOverviewPage() {
   const { toast } = useToast()
+  const { displayName } = useCurrentUser()
+  const [, startTransition] = useTransition()
 
   // State
   const [habits, setHabits] = useState<Habit[]>([])
@@ -54,6 +64,7 @@ export default function DeskOverviewPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [todayMood, setTodayMood] = useState<MoodLog | null>(null)
   const [recentJournal, setRecentJournal] = useState<JournalEntry | null>(null)
+  const [isCloudSynced, setIsCloudSynced] = useState(false)
 
   // Intention editing
   const [isEditingIntention, setIsEditingIntention] = useState(false)
@@ -65,7 +76,8 @@ export default function DeskOverviewPage() {
 
   useEffect(() => {
     const now = new Date()
-    setTodayStr(formatLocalDate(now))
+    const formatted = formatLocalDate(now)
+    setTodayStr(formatted)
     setTodayFormatted(
       new Intl.DateTimeFormat('en-US', {
         weekday: 'long',
@@ -80,26 +92,51 @@ export default function DeskOverviewPage() {
     else setGreeting('Good evening')
   }, [])
 
-  // Initial Load from local store
+  // Initial Load: Fetch from Supabase or fallback to Local Store
   useEffect(() => {
-    const loadedHabits = getLocalHabits()
-    const loadedLogs = getLocalHabitLogs()
-    const loadedTasks = getLocalTasks()
-    const loadedPlan = getLocalDailyPlan()
-    const loadedBlocks = getLocalTimeBlocks()
-    const loadedGoals = getLocalGoals()
-    const loadedJournals = getLocalJournalEntries()
-    const loadedMoods = getLocalMoodLogs()
+    async function loadData() {
+      try {
+        const res = await getDashboardData(todayStr)
+        if (res.isAuthenticated) {
+          setIsCloudSynced(true)
+          setHabits(res.habits)
+          setLogs(res.habitLogs)
+          setTasks(res.tasks)
+          setDailyPlan(res.dailyPlan)
+          setTimeBlocks(res.timeBlocks)
+          setGoals(res.goals)
+          setIntentionInput(res.dailyPlan?.morningIntention || '')
+          setRecentJournal(res.recentJournal)
+          setTodayMood(res.todayMood)
+          return
+        }
+      } catch (err) {
+        console.warn('Dashboard live load error, falling back to local storage:', err)
+      }
 
-    setHabits(loadedHabits)
-    setLogs(loadedLogs)
-    setTasks(loadedTasks)
-    setDailyPlan(loadedPlan)
-    setTimeBlocks(loadedBlocks.filter((b) => b.blockDate === todayStr))
-    setGoals(loadedGoals)
-    setIntentionInput(loadedPlan?.morningIntention || '')
-    setRecentJournal(loadedJournals[0] || null)
-    setTodayMood(loadedMoods.find((m) => m.logDate === todayStr) || null)
+      // Fallback for unauthenticated visitor or offline mode
+      setIsCloudSynced(false)
+      const loadedHabits = getLocalHabits()
+      const loadedLogs = getLocalHabitLogs()
+      const loadedTasks = getLocalTasks()
+      const loadedPlan = getLocalDailyPlan()
+      const loadedBlocks = getLocalTimeBlocks()
+      const loadedGoals = getLocalGoals()
+      const loadedJournals = getLocalJournalEntries()
+      const loadedMoods = getLocalMoodLogs()
+
+      setHabits(loadedHabits)
+      setLogs(loadedLogs)
+      setTasks(loadedTasks)
+      setDailyPlan(loadedPlan)
+      setTimeBlocks(loadedBlocks.filter((b) => b.blockDate === todayStr))
+      setGoals(loadedGoals)
+      setIntentionInput(loadedPlan?.morningIntention || '')
+      setRecentJournal(loadedJournals[0] || null)
+      setTodayMood(loadedMoods.find((m) => m.logDate === todayStr) || null)
+    }
+
+    loadData()
   }, [todayStr])
 
   // Scheduled habits for today
@@ -151,7 +188,7 @@ export default function DeskOverviewPage() {
     } else {
       const newLog: HabitLog = {
         id: `log-${Date.now()}`,
-        userId: 'default-user',
+        userId: 'current-user',
         habitId,
         logDate: todayStr,
         status: 'completed',
@@ -167,7 +204,14 @@ export default function DeskOverviewPage() {
     }
 
     setLogs(updatedLogs)
-    saveLocalHabitLogs(updatedLogs)
+
+    if (isCloudSynced) {
+      startTransition(async () => {
+        await toggleHabitDashboardAction(habitId, todayStr, !isCompleted)
+      })
+    } else {
+      saveLocalHabitLogs(updatedLogs)
+    }
   }
 
   function handleToggleTask(task: Task) {
@@ -205,7 +249,6 @@ export default function DeskOverviewPage() {
 
     const finalTasks = nextTask ? [nextTask, ...updatedTasks] : updatedTasks
     setTasks(finalTasks)
-    saveLocalTasks(finalTasks)
 
     if (!isCompleted) {
       toast({
@@ -214,17 +257,42 @@ export default function DeskOverviewPage() {
         variant: 'success',
       })
     }
+
+    if (isCloudSynced) {
+      startTransition(async () => {
+        await toggleTaskDashboardAction(task.id, !isCompleted)
+      })
+    } else {
+      saveLocalTasks(finalTasks)
+    }
   }
 
   function handleSaveIntention() {
     setIsEditingIntention(false)
-    if (dailyPlan) {
-      const updatedPlan: DailyPlan = {
-        ...dailyPlan,
-        morningIntention: intentionInput.trim(),
-        updatedAt: new Date().toISOString(),
-      }
-      setDailyPlan(updatedPlan)
+    const trimmed = intentionInput.trim()
+    const updatedPlan: DailyPlan = dailyPlan
+      ? {
+          ...dailyPlan,
+          morningIntention: trimmed,
+          updatedAt: new Date().toISOString(),
+        }
+      : {
+          id: `plan-${Date.now()}`,
+          userId: 'current-user',
+          planDate: todayStr,
+          morningIntention: trimmed,
+          timeBlocks: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+
+    setDailyPlan(updatedPlan)
+
+    if (isCloudSynced) {
+      startTransition(async () => {
+        await saveIntentionDashboardAction(todayStr, trimmed)
+      })
+    } else {
       saveLocalDailyPlan(updatedPlan)
     }
 
@@ -235,11 +303,13 @@ export default function DeskOverviewPage() {
     })
   }
 
+  const userGreetingName = displayName && displayName !== 'Guest' ? displayName : 'there'
+
   return (
     <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto pb-16">
       {/* Page Header */}
       <SectionHeader
-        title={`${greeting}, Alex`}
+        title={`${greeting}, ${userGreetingName}`}
         description={`Today is ${todayFormatted}. Your thoughts, habits, and focus blocks are organized with intention.`}
         badge={
           todayMood ? (
@@ -257,9 +327,11 @@ export default function DeskOverviewPage() {
               </span>
             </Link>
           ) : (
-            <PastelBadge variant="sage" dot>
-              Phase 05 Active
-            </PastelBadge>
+            <Link href="/app/journal">
+              <PastelBadge variant="lavender" dot>
+                Check-in Mood
+              </PastelBadge>
+            </Link>
           )
         }
         action={
@@ -608,23 +680,23 @@ export default function DeskOverviewPage() {
         <h3 className="text-sm font-bold tracking-tight text-[#33312F] mb-3">
           Productivity Modules
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-3">
           <Link
-            href="/app/journal"
-            className="p-4 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
+            href="/app/notes"
+            className="p-3.5 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
           >
-            <div className="w-7 h-7 rounded-lg bg-[#F4E4DC] text-[#7A281E] flex items-center justify-center mb-2">
-              <BookOpen className="w-4 h-4" />
+            <div className="w-7 h-7 rounded-lg bg-[#F4EBD5] text-[#7A6332] flex items-center justify-center mb-2">
+              <StickyNote className="w-4 h-4" />
             </div>
-            <div className="text-xs font-bold text-[#33312F]">Mindful Journal</div>
+            <div className="text-xs font-bold text-[#33312F]">Notes &amp; Stickies</div>
             <div className="text-[11px] text-[#85817D]">
-              {todayMood ? `${MOOD_DEFINITIONS[todayMood.moodLevel].emoji} ${MOOD_DEFINITIONS[todayMood.moodLevel].label}` : 'Reflect & log mood'}
+              Tactile thought board
             </div>
           </Link>
 
           <Link
             href="/app/habits"
-            className="p-4 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
+            className="p-3.5 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
           >
             <div className="w-7 h-7 rounded-lg bg-[#E3EBDD] text-[#283824] flex items-center justify-center mb-2">
               <Flame className="w-4 h-4" />
@@ -637,7 +709,7 @@ export default function DeskOverviewPage() {
 
           <Link
             href="/app/tasks"
-            className="p-4 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
+            className="p-3.5 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
           >
             <div className="w-7 h-7 rounded-lg bg-[#DFEAF2] text-[#1E3345] flex items-center justify-center mb-2">
               <CheckSquare className="w-4 h-4" />
@@ -650,12 +722,12 @@ export default function DeskOverviewPage() {
 
           <Link
             href="/app/goals"
-            className="p-4 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
+            className="p-3.5 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
           >
             <div className="w-7 h-7 rounded-lg bg-[#F0DFE8] text-[#552744] flex items-center justify-center mb-2">
               <Target className="w-4 h-4" />
             </div>
-            <div className="text-xs font-bold text-[#33312F]">Goals &amp; Milestones</div>
+            <div className="text-xs font-bold text-[#33312F]">Milestone Goals</div>
             <div className="text-[11px] text-[#85817D]">
               {goals.length} ambitions
             </div>
@@ -663,14 +735,40 @@ export default function DeskOverviewPage() {
 
           <Link
             href="/app/calendar"
-            className="p-4 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
+            className="p-3.5 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
           >
             <div className="w-7 h-7 rounded-lg bg-[#F4EBD5] text-[#7A6332] flex items-center justify-center mb-2">
               <Calendar className="w-4 h-4" />
             </div>
             <div className="text-xs font-bold text-[#33312F]">Daily Planner</div>
             <div className="text-[11px] text-[#85817D]">
-              Time-blocking &amp; review
+              Timeline &amp; blocks
+            </div>
+          </Link>
+
+          <Link
+            href="/app/journal"
+            className="p-3.5 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
+          >
+            <div className="w-7 h-7 rounded-lg bg-[#F4E4DC] text-[#7A281E] flex items-center justify-center mb-2">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div className="text-xs font-bold text-[#33312F]">Mindful Journal</div>
+            <div className="text-[11px] text-[#85817D]">
+              {todayMood ? `${MOOD_DEFINITIONS[todayMood.moodLevel].emoji} ${MOOD_DEFINITIONS[todayMood.moodLevel].label}` : 'Reflect & log mood'}
+            </div>
+          </Link>
+
+          <Link
+            href="/app/ai"
+            className="p-3.5 rounded-2xl bg-white border border-[#E8E6DF] hover:border-[#D1CEBF] hover:shadow-xs transition-all space-y-1 block"
+          >
+            <div className="w-7 h-7 rounded-lg bg-[#E8E1F4] text-[#4B3968] flex items-center justify-center mb-2">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="text-xs font-bold text-[#33312F]">Gemini Copilot</div>
+            <div className="text-[11px] text-[#85817D]">
+              AI RAG &amp; answers
             </div>
           </Link>
         </div>

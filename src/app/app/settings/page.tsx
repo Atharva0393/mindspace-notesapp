@@ -9,12 +9,14 @@ import { Switch } from '@/components/ui/switch'
 import { PastelBadge } from '@/components/ui/pastel-badge'
 import { PASTEL_PALETTE, PastelColorKey } from '@/lib/constants/colors'
 import { useToast } from '@/components/ui/toast'
+import { useCurrentUser } from '@/components/layout/user-context'
 import { cn } from '@/lib/utils/styling'
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const [fullName, setFullName] = useState('Alex Morgan')
-  const [email] = useState('alex@example.com')
+  const { displayName, userEmail, isAuthenticated } = useCurrentUser()
+  const [fullName, setFullName] = useState(displayName !== 'Guest' && displayName !== 'Friend' ? displayName : '')
+  const [email] = useState(userEmail || (isAuthenticated ? 'user@mindspace.app' : 'guest@local.preview'))
   const [defaultColor, setDefaultColor] = useState<PastelColorKey>('buttercream')
   const [hapticFeedback, setHapticFeedback] = useState(true)
   const [subtleRotations, setSubtleRotations] = useState(true)
@@ -63,7 +65,7 @@ export default function SettingsPage() {
               <Input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Alex Morgan"
+                placeholder="Your display name"
               />
             </div>
             <div>

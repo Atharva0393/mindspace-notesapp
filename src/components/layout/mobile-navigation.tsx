@@ -32,7 +32,7 @@ export function MobileNavigation({
             <Sparkles className="w-3.5 h-3.5 text-[#352749]" />
           </div>
           <span className="font-bold text-sm tracking-tight text-[#33312F]">
-            Notepad<span className="text-[#85817D] font-normal">.ai</span>
+            Mindspace<span className="text-[#85817D] font-normal">.ai</span>
           </span>
         </div>
       }

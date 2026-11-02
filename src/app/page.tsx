@@ -36,7 +36,7 @@ export default async function HomePage() {
               <Sparkles className="w-4 h-4 text-[#322A42]" />
             </div>
             <span className="font-semibold text-lg tracking-tight">
-              Notepad<span className="text-[#706E6B] font-normal">.ai</span>
+              Mindspace<span className="text-[#706E6B] font-normal">.ai</span>
             </span>
           </Link>
 
@@ -85,7 +85,7 @@ export default async function HomePage() {
         <div className="max-w-2xl mx-auto text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E3EBDD] border border-[#CFDBC6] text-xs font-medium text-[#283824] mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-[#3D7535]" />
-            Phase 02 Active: Pastel Design System &amp; Workspace Shell Ready
+            Tactile Pastel Surfaces &bull; Gemini 2.5 AI Powered
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#2D2D2D] leading-[1.15]">
             Your thoughts, habits, and daily flow on delightful pastel surfaces.

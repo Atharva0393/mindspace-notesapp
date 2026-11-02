@@ -102,7 +102,7 @@ export default function JournalPage() {
         const res = await getJournalData()
         setIsConfigured(res.isConfigured)
 
-        if (res.isConfigured && res.entries.length > 0) {
+        if (res.isAuthenticated) {
           setEntries(res.entries)
           setMoodLogs(res.moodLogs)
         } else {

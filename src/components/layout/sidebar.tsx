@@ -59,7 +59,7 @@ export function Sidebar({
               {!isCollapsed && (
                 <div className="flex flex-col truncate">
                   <span className="font-bold text-sm tracking-tight text-[#33312F]">
-                    Notepad<span className="text-[#85817D] font-normal">.ai</span>
+                    Mindspace<span className="text-[#85817D] font-normal">.ai</span>
                   </span>
                   <span className="text-[10px] text-[#85817D] truncate">
                     Personal Workspace
@@ -142,7 +142,7 @@ export function Sidebar({
               className="h-9 px-2.5 rounded-[10px] flex items-center gap-2.5 text-xs font-medium text-[#85817D] hover:text-[#33312F] hover:bg-[#F5F2EB] transition-colors cursor-pointer text-left w-full"
             >
               <HelpCircle className="w-4 h-4 shrink-0" />
-              <span>Help &amp; Roadmap</span>
+              <span>Shortcuts &amp; Guide</span>
             </button>
           )}
 
@@ -159,38 +159,63 @@ export function Sidebar({
         </div>
       </aside>
 
-      {/* Help Modal */}
+      {/* Help & Guide Modal */}
       <Modal
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
-        title="Workspace Overview & Roadmap"
-        description="Notepad.ai combines pastel sticky notes, habit tracking, and Gemini AI."
+        title="Mindspace Guide & Shortcuts"
+        description="Pastel tactile surfaces, habit tracking, mindful reflection, and Gemini AI."
       >
         <div className="space-y-4">
-          <div className="p-3.5 rounded-[14px] bg-[#E8E1F4] border border-[#D8CEE8] text-xs text-[#352749]">
-            <span className="font-semibold">Current Phase:</span> Phase 02 (Pastel Design System &amp; Workspace Shell) is active. All components and navigation are functional.
+          <div className="p-3.5 rounded-[14px] bg-[#E3EBDD] border border-[#CCD9C3] text-xs text-[#283824] flex items-center justify-between">
+            <span className="font-semibold">MINDSPACE Cloud Engine Active</span>
+            <span className="text-[10px] bg-white/70 px-2 py-0.5 rounded-full font-mono">v1.2 Production</span>
           </div>
 
           <div className="space-y-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#85817D]">
-              Next Milestones
+              Keyboard Shortcuts
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E6DF] flex items-center justify-between">
+                <span className="text-[#55524E]">Command Palette</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#D5D1C8] text-[10px] font-mono shadow-3xs">⌘K</kbd>
+              </div>
+              <div className="p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E6DF] flex items-center justify-between">
+                <span className="text-[#55524E]">Quick Note</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#D5D1C8] text-[10px] font-mono shadow-3xs">⌘N</kbd>
+              </div>
+              <div className="p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E6DF] flex items-center justify-between">
+                <span className="text-[#55524E]">Search Workspace</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#D5D1C8] text-[10px] font-mono shadow-3xs">⌘F</kbd>
+              </div>
+              <div className="p-2 rounded-lg bg-[#FAF9F6] border border-[#E8E6DF] flex items-center justify-between">
+                <span className="text-[#55524E]">Dismiss / Close</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#D5D1C8] text-[10px] font-mono shadow-3xs">Esc</kbd>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#85817D]">
+              Workspace Modules
             </h4>
             <ul className="text-xs space-y-1.5 text-[#4A4744]">
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#E5B54F]" />
-                <strong>Phase 03:</strong> Intelligent Notes &amp; Interactive Sticky Board
+                <strong>Intelligent Notes:</strong> Tactile sticky notes with rich Markdown &amp; color tags.
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#3D7535]" />
-                <strong>Phase 04:</strong> Tasks, Habits &amp; Daily Planner Timeline
+                <strong>Habit Studio &amp; Tasks:</strong> Daily consistency heatmaps, streaks, and Eisenhower matrix.
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#5B3E8C]" />
-                <strong>Phase 05:</strong> Mindful Journaling &amp; Mood Reflection
+                <strong>Mindful Journal:</strong> Mood logging, reflection prompts, and emotional analytics.
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#213545]" />
-                <strong>Phase 06 &amp; 07:</strong> Gemini RAG Knowledge Engine &amp; AI Copilot
+                <strong>Gemini Copilot:</strong> Retrieval-Augmented Generation across your entire personal corpus.
               </li>
             </ul>
           </div>

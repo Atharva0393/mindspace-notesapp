@@ -71,7 +71,7 @@ export default function NotesPage() {
         const res = await getNotesData()
         setIsConfigured(res.isConfigured)
 
-        if (res.isConfigured && res.notes.length > 0) {
+        if (res.isAuthenticated) {
           setNotes(res.notes)
           setFolders(res.folders)
         } else {

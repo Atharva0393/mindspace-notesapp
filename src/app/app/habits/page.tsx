@@ -60,7 +60,7 @@ export default function HabitsPage() {
         const res = await getHabitsData()
         setIsConfigured(res.isConfigured)
 
-        if (res.isConfigured && res.habits.length > 0) {
+        if (res.isAuthenticated) {
           setHabits(res.habits)
           setLogs(res.logs)
         } else {

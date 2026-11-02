@@ -72,7 +72,7 @@ export default function TasksPage() {
         const res = await getTasksData()
         setIsConfigured(res.isConfigured)
 
-        if (res.isConfigured && res.tasks.length > 0) {
+        if (res.isAuthenticated) {
           setTasks(res.tasks)
         } else {
           setTasks(getLocalTasks())

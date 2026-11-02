@@ -8,12 +8,13 @@ import { Database, Json } from '@/types/database'
 export interface GoalsQueryResult {
   goals: Goal[]
   isConfigured: boolean
+  isAuthenticated: boolean
   error?: string
 }
 
 export async function getGoalsData(): Promise<GoalsQueryResult> {
   if (!isSupabaseConfigured()) {
-    return { goals: [], isConfigured: false }
+    return { goals: [], isConfigured: false, isAuthenticated: false }
   }
 
   try {
@@ -23,7 +24,7 @@ export async function getGoalsData(): Promise<GoalsQueryResult> {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return { goals: [], isConfigured: true, error: 'Unauthorized' }
+      return { goals: [], isConfigured: true, isAuthenticated: false, error: 'Unauthorized' }
     }
 
     const { data: goalData, error: goalError } = await supabase
@@ -33,7 +34,7 @@ export async function getGoalsData(): Promise<GoalsQueryResult> {
       .order('created_at', { ascending: false })
 
     if (goalError) {
-      return { goals: [], isConfigured: true, error: goalError.message }
+      return { goals: [], isConfigured: true, isAuthenticated: true, error: goalError.message }
     }
 
     const goals: Goal[] = (goalData || []).map((g) => ({
@@ -52,10 +53,10 @@ export async function getGoalsData(): Promise<GoalsQueryResult> {
       updatedAt: g.updated_at,
     }))
 
-    return { goals, isConfigured: true }
+    return { goals, isConfigured: true, isAuthenticated: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return { goals: [], isConfigured: true, error: message }
+    return { goals: [], isConfigured: true, isAuthenticated: false, error: message }
   }
 }
 

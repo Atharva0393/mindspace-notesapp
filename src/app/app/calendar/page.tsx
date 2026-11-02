@@ -130,10 +130,10 @@ export default function CalendarPage() {
         const res = await getDailyPlanData(selectedDate)
         setIsConfigured(res.isConfigured)
 
-        if (res.isConfigured && res.dailyPlan) {
+        if (res.isAuthenticated) {
           setDailyPlan(res.dailyPlan)
           setTimeBlocks(res.timeBlocks)
-          setIntentionText(res.dailyPlan.morningIntention || '')
+          setIntentionText(res.dailyPlan?.morningIntention || '')
         } else {
           // Fallback to local storage
           const localPlan = getLocalDailyPlan()

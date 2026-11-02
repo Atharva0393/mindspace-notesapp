@@ -18,6 +18,7 @@ export interface JournalQueryResult {
   entries: JournalEntry[]
   moodLogs: MoodLog[]
   isConfigured: boolean
+  isAuthenticated: boolean
   error?: string
 }
 
@@ -28,7 +29,7 @@ export async function getJournalData(options?: {
   sortBy?: JournalSort
 }): Promise<JournalQueryResult> {
   if (!isSupabaseConfigured()) {
-    return { entries: [], moodLogs: [], isConfigured: false }
+    return { entries: [], moodLogs: [], isConfigured: false, isAuthenticated: false }
   }
 
   try {
@@ -38,7 +39,7 @@ export async function getJournalData(options?: {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return { entries: [], moodLogs: [], isConfigured: true, error: 'Unauthorized' }
+      return { entries: [], moodLogs: [], isConfigured: true, isAuthenticated: false, error: 'Unauthorized' }
     }
 
     // 1. Fetch Journal Entries
@@ -64,7 +65,7 @@ export async function getJournalData(options?: {
     const { data: entryData, error: entryError } = await query
 
     if (entryError) {
-      return { entries: [], moodLogs: [], isConfigured: true, error: entryError.message }
+      return { entries: [], moodLogs: [], isConfigured: true, isAuthenticated: true, error: entryError.message }
     }
 
     const entries: JournalEntry[] = (entryData || []).map((e) => ({
@@ -110,10 +111,10 @@ export async function getJournalData(options?: {
       updatedAt: m.updated_at,
     }))
 
-    return { entries, moodLogs, isConfigured: true }
+    return { entries, moodLogs, isConfigured: true, isAuthenticated: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return { entries: [], moodLogs: [], isConfigured: true, error: message }
+    return { entries: [], moodLogs: [], isConfigured: true, isAuthenticated: false, error: message }
   }
 }
 

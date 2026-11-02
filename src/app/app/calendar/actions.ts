@@ -9,12 +9,13 @@ export interface DailyPlanQueryResult {
   dailyPlan: DailyPlan | null
   timeBlocks: TimeBlock[]
   isConfigured: boolean
+  isAuthenticated: boolean
   error?: string
 }
 
 export async function getDailyPlanData(dateStr: string): Promise<DailyPlanQueryResult> {
   if (!isSupabaseConfigured()) {
-    return { dailyPlan: null, timeBlocks: [], isConfigured: false }
+    return { dailyPlan: null, timeBlocks: [], isConfigured: false, isAuthenticated: false }
   }
 
   try {
@@ -24,7 +25,7 @@ export async function getDailyPlanData(dateStr: string): Promise<DailyPlanQueryR
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return { dailyPlan: null, timeBlocks: [], isConfigured: true, error: 'Unauthorized' }
+      return { dailyPlan: null, timeBlocks: [], isConfigured: true, isAuthenticated: false, error: 'Unauthorized' }
     }
 
     // 1. Fetch Daily Plan
@@ -76,10 +77,10 @@ export async function getDailyPlanData(dateStr: string): Promise<DailyPlanQueryR
         }
       : null
 
-    return { dailyPlan, timeBlocks, isConfigured: true }
+    return { dailyPlan, timeBlocks, isConfigured: true, isAuthenticated: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return { dailyPlan: null, timeBlocks: [], isConfigured: true, error: message }
+    return { dailyPlan: null, timeBlocks: [], isConfigured: true, isAuthenticated: false, error: message }
   }
 }
 

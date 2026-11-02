@@ -10,6 +10,7 @@ export interface TasksQueryResult {
   tasks: Task[]
   projects: string[]
   isConfigured: boolean
+  isAuthenticated: boolean
   error?: string
 }
 
@@ -19,7 +20,7 @@ export async function getTasksData(options?: {
   sortBy?: TaskSort
 }): Promise<TasksQueryResult> {
   if (!isSupabaseConfigured()) {
-    return { tasks: [], projects: [], isConfigured: false }
+    return { tasks: [], projects: [], isConfigured: false, isAuthenticated: false }
   }
 
   try {
@@ -29,7 +30,7 @@ export async function getTasksData(options?: {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return { tasks: [], projects: [], isConfigured: true, error: 'Unauthorized' }
+      return { tasks: [], projects: [], isConfigured: true, isAuthenticated: false, error: 'Unauthorized' }
     }
 
     let query = supabase.from('tasks').select('*').eq('user_id', user.id)
@@ -57,7 +58,7 @@ export async function getTasksData(options?: {
     const { data: taskData, error: taskError } = await query.order('created_at', { ascending: false })
 
     if (taskError) {
-      return { tasks: [], projects: [], isConfigured: true, error: taskError.message }
+      return { tasks: [], projects: [], isConfigured: true, isAuthenticated: true, error: taskError.message }
     }
 
     const projectSet = new Set<string>()
@@ -88,10 +89,11 @@ export async function getTasksData(options?: {
       tasks,
       projects: Array.from(projectSet).sort(),
       isConfigured: true,
+      isAuthenticated: true,
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return { tasks: [], projects: [], isConfigured: true, error: message }
+    return { tasks: [], projects: [], isConfigured: true, isAuthenticated: false, error: message }
   }
 }
 

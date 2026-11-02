@@ -9,12 +9,13 @@ export interface HabitsQueryResult {
   habits: Habit[]
   logs: HabitLog[]
   isConfigured: boolean
+  isAuthenticated: boolean
   error?: string
 }
 
 export async function getHabitsData(): Promise<HabitsQueryResult> {
   if (!isSupabaseConfigured()) {
-    return { habits: [], logs: [], isConfigured: false }
+    return { habits: [], logs: [], isConfigured: false, isAuthenticated: false }
   }
 
   try {
@@ -24,7 +25,7 @@ export async function getHabitsData(): Promise<HabitsQueryResult> {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return { habits: [], logs: [], isConfigured: true, error: 'Unauthorized' }
+      return { habits: [], logs: [], isConfigured: true, isAuthenticated: false, error: 'Unauthorized' }
     }
 
     const { data: habitsData, error: habitsError } = await supabase
@@ -35,7 +36,7 @@ export async function getHabitsData(): Promise<HabitsQueryResult> {
       .order('created_at', { ascending: false })
 
     if (habitsError) {
-      return { habits: [], logs: [], isConfigured: true, error: habitsError.message }
+      return { habits: [], logs: [], isConfigured: true, isAuthenticated: true, error: habitsError.message }
     }
 
     const { data: logsData, error: logsError } = await supabase
@@ -77,10 +78,10 @@ export async function getHabitsData(): Promise<HabitsQueryResult> {
       updatedAt: h.updated_at,
     }))
 
-    return { habits, logs, isConfigured: true }
+    return { habits, logs, isConfigured: true, isAuthenticated: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return { habits: [], logs: [], isConfigured: true, error: message }
+    return { habits: [], logs: [], isConfigured: true, isAuthenticated: false, error: message }
   }
 }
 

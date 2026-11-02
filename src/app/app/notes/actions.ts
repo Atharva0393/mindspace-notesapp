@@ -10,6 +10,7 @@ export interface NotesQueryResult {
   folders: Folder[]
   allTags: string[]
   isConfigured: boolean
+  isAuthenticated: boolean
   error?: string
 }
 
@@ -27,6 +28,7 @@ export async function getNotesData(options?: {
       folders: [],
       allTags: [],
       isConfigured: false,
+      isAuthenticated: false,
     }
   }
 
@@ -42,6 +44,7 @@ export async function getNotesData(options?: {
         folders: [],
         allTags: [],
         isConfigured: true,
+        isAuthenticated: false,
         error: 'Not authenticated',
       }
     }
@@ -119,6 +122,7 @@ export async function getNotesData(options?: {
         folders,
         allTags: [],
         isConfigured: true,
+        isAuthenticated: true,
         error: noteError.message,
       }
     }
@@ -152,6 +156,7 @@ export async function getNotesData(options?: {
       folders,
       allTags: Array.from(allTagsSet).sort(),
       isConfigured: true,
+      isAuthenticated: true,
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'
@@ -160,6 +165,7 @@ export async function getNotesData(options?: {
       folders: [],
       allTags: [],
       isConfigured: true,
+      isAuthenticated: false,
       error: message,
     }
   }

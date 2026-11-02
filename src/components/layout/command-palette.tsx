@@ -18,7 +18,6 @@ import {
   ArrowRight,
   Command,
 } from 'lucide-react'
-import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils/styling'
 
 interface CommandItem {
@@ -37,7 +36,6 @@ export function CommandPalette() {
   const [search, setSearch] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const router = useRouter()
-  const { toast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
 
   const commands: CommandItem[] = useMemo(
@@ -119,14 +117,9 @@ export function CommandPalette() {
         label: 'Create a new pastel note',
         group: 'Actions',
         icon: <Plus className="w-4 h-4 text-[#B58525]" />,
-        badge: 'Phase 03',
+        badge: 'Note',
         action: () => {
-          toast({
-            title: 'Note Editor Available in Phase 03',
-            description: 'The interactive sticky board and rich note editor will be integrated in Phase 03.',
-            variant: 'pastel',
-          })
-          router.push('/app/notes')
+          router.push('/app/notes?action=new')
         },
       },
       {
@@ -134,14 +127,9 @@ export function CommandPalette() {
         label: 'Create a new task',
         group: 'Actions',
         icon: <Plus className="w-4 h-4 text-[#3D7535]" />,
-        badge: 'Phase 04',
+        badge: 'Task',
         action: () => {
-          toast({
-            title: 'Tasks Available in Phase 04',
-            description: 'Task board, priority matrices, and goal tracking will be integrated in Phase 04.',
-            variant: 'pastel',
-          })
-          router.push('/app/tasks')
+          router.push('/app/tasks?action=new')
         },
       },
       {
@@ -149,18 +137,33 @@ export function CommandPalette() {
         label: 'Create a new daily habit',
         group: 'Actions',
         icon: <Plus className="w-4 h-4 text-[#C95D4A]" />,
-        badge: 'Phase 04',
+        badge: 'Habit',
         action: () => {
-          toast({
-            title: 'Habit Tracker Available in Phase 04',
-            description: 'Habit streaks and consistency heatmaps will be integrated in Phase 04.',
-            variant: 'pastel',
-          })
-          router.push('/app/habits')
+          router.push('/app/habits?action=new')
+        },
+      },
+      {
+        id: 'act-new-journal',
+        label: 'Write mindful journal entry',
+        group: 'Actions',
+        icon: <Plus className="w-4 h-4 text-[#5B3E8C]" />,
+        badge: 'Journal',
+        action: () => {
+          router.push('/app/journal?action=new')
+        },
+      },
+      {
+        id: 'act-ask-ai',
+        label: 'Ask Gemini Copilot',
+        group: 'Actions',
+        icon: <Sparkles className="w-4 h-4 text-[#5B3E8C]" />,
+        badge: 'AI',
+        action: () => {
+          router.push('/app/ai')
         },
       },
     ],
-    [router, toast]
+    [router]
   )
 
   const filteredCommands = useMemo(() => {

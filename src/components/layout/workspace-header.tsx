@@ -2,13 +2,12 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { Menu, Plus, Bell, StickyNote, CheckSquare, Flame, Sparkles } from 'lucide-react'
+import { Menu, Plus, Bell, StickyNote, CheckSquare, Flame, Sparkles, BookOpen } from 'lucide-react'
 import { Breadcrumbs } from './breadcrumbs'
 import { GlobalSearch } from './global-search'
 import { UserMenu } from './user-menu'
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Popover } from '@/components/ui/popover'
-import { useToast } from '@/components/ui/toast'
 
 export interface WorkspaceHeaderProps {
   onOpenMobileNav: () => void
@@ -24,7 +23,6 @@ export function WorkspaceHeader({
   avatarUrl,
 }: WorkspaceHeaderProps) {
   const router = useRouter()
-  const { toast } = useToast()
 
   const quickCreateItems: (DropdownMenuItem | 'divider')[] = [
     {
@@ -33,12 +31,7 @@ export function WorkspaceHeader({
       icon: <StickyNote className="w-4 h-4 text-[#B58525]" />,
       shortcut: 'N',
       onClick: () => {
-        toast({
-          title: 'Opening Notes Module',
-          description: 'Navigating to sticky board (Phase 03 implementation).',
-          variant: 'pastel',
-        })
-        router.push('/app/notes')
+        router.push('/app/notes?action=new')
       },
     },
     {
@@ -47,12 +40,7 @@ export function WorkspaceHeader({
       icon: <CheckSquare className="w-4 h-4 text-[#3D7535]" />,
       shortcut: 'T',
       onClick: () => {
-        toast({
-          title: 'Opening Tasks Module',
-          description: 'Navigating to task manager (Phase 04 implementation).',
-          variant: 'pastel',
-        })
-        router.push('/app/tasks')
+        router.push('/app/tasks?action=new')
       },
     },
     {
@@ -61,12 +49,25 @@ export function WorkspaceHeader({
       icon: <Flame className="w-4 h-4 text-[#C95D4A]" />,
       shortcut: 'H',
       onClick: () => {
-        toast({
-          title: 'Opening Habit Tracker',
-          description: 'Navigating to habit tracker (Phase 04 implementation).',
-          variant: 'pastel',
-        })
-        router.push('/app/habits')
+        router.push('/app/habits?action=new')
+      },
+    },
+    {
+      id: 'create-journal',
+      label: 'New Journal Entry',
+      icon: <BookOpen className="w-4 h-4 text-[#7A281E]" />,
+      shortcut: 'J',
+      onClick: () => {
+        router.push('/app/journal?action=new')
+      },
+    },
+    {
+      id: 'ask-ai',
+      label: 'Ask Gemini Copilot',
+      icon: <Sparkles className="w-4 h-4 text-[#5B3E8C]" />,
+      shortcut: 'A',
+      onClick: () => {
+        router.push('/app/ai')
       },
     },
   ]

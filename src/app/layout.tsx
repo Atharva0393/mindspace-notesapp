@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Notepad.ai — Premium AI Personal Productivity & Sticky Workspace',
+  title: 'Mindspace — AI-Powered Personal Productivity Workspace',
   description:
-    'An intentional, beautifully organized digital workspace combining intelligent notes, habit tracking, daily planning, and an AI companion.',
+    'An intentional, beautifully organized digital workspace combining intelligent notes, habit tracking, daily planning, mindful journal, and Gemini AI companion.',
 }
 
 export default function RootLayout({

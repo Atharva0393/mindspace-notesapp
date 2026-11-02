@@ -66,7 +66,7 @@ export const INITIAL_SAMPLE_NOTES: Note[] = [
     userId: 'default-user',
     title: 'Weekly Sprint & Project Checklist',
     content: `
-<h2>Phase 03 Milestones</h2>
+<h2>Product & Architecture Milestones</h2>
 <p>Execution checklist for the Intelligent Notes module:</p>
 <ul data-type="taskList">
   <li data-checked="true"><p>Install &amp; verify TipTap rich text engine</p></li>
@@ -120,7 +120,7 @@ export const INITIAL_SAMPLE_NOTES: Note[] = [
 <h2>Bi-Directional Knowledge Networks</h2>
 <p>Exploring how notes relate to each other semantically using <code>[[wikilinks]]</code> and vector similarity.</p>
 <p>When notes reference shared concepts, an emergent personal knowledge graph forms without forced hierarchical folders.</p>
-<p>In Phase 06, Gemini embeddings will compute nearest neighbors across this corpus automatically.</p>
+<p>Gemini vector embeddings compute semantic nearest neighbors across your personal workspace corpus automatically.</p>
     `.trim(),
     colorTheme: 'lavender',
     isPinned: false,
