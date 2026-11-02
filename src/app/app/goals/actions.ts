@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Goal, GoalCreateInput, GoalUpdateInput, GoalMilestone } from '@/types/tasks'
 import { Database, Json } from '@/types/database'
+import { syncWorkspaceItemToKnowledge, removeSourceKnowledgeChunks } from '@/lib/ai/indexer'
 
 export interface GoalsQueryResult {
   goals: Goal[]
@@ -102,6 +103,25 @@ export async function createGoalAction(input: GoalCreateInput): Promise<{ goal?:
     return { error: error.message }
   }
 
+  // Automatic knowledge ingestion for the created goal
+  try {
+    await syncWorkspaceItemToKnowledge(supabase, {
+      userId: user.id,
+      sourceType: 'goal',
+      sourceId: data.id,
+      title: data.title,
+      rawContent: data.description || '',
+      metadata: {
+        category: data.category,
+        targetDate: data.target_date,
+        progress: data.progress,
+        isCompleted: data.is_completed,
+      },
+    })
+  } catch (ingestErr) {
+    console.warn('[Goals Ingestion] Failed to index goal:', ingestErr)
+  }
+
   revalidatePath('/app/goals')
   return {
     goal: {
@@ -163,6 +183,34 @@ export async function updateGoalAction(
     return { success: false, error: error.message }
   }
 
+  // Automatic knowledge synchronization for updated goal
+  try {
+    const { data: updatedGoal } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (updatedGoal) {
+      await syncWorkspaceItemToKnowledge(supabase, {
+        userId: user.id,
+        sourceType: 'goal',
+        sourceId: updatedGoal.id,
+        title: updatedGoal.title,
+        rawContent: updatedGoal.description || '',
+        metadata: {
+          category: updatedGoal.category,
+          targetDate: updatedGoal.target_date,
+          progress: updatedGoal.progress,
+          isCompleted: updatedGoal.is_completed,
+        },
+      })
+    }
+  } catch (ingestErr) {
+    console.warn('[Goals Ingestion] Failed to update goal index:', ingestErr)
+  }
+
   revalidatePath('/app/goals')
   return { success: true }
 }
@@ -179,6 +227,13 @@ export async function deleteGoalAction(id: string): Promise<{ success: boolean; 
 
   if (!user) {
     return { success: false, error: 'Unauthorized' }
+  }
+
+  // Automatic knowledge chunk removal for deleted goal
+  try {
+    await removeSourceKnowledgeChunks(supabase, user.id, 'goal', id)
+  } catch (ingestErr) {
+    console.warn('[Goals Ingestion] Failed to remove goal index chunks:', ingestErr)
   }
 
   const { error } = await supabase

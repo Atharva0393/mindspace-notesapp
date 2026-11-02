@@ -13,6 +13,7 @@ import {
   MoodLevel,
 } from '@/types/journal'
 import { Database, Json } from '@/types/database'
+import { syncWorkspaceItemToKnowledge, removeSourceKnowledgeChunks } from '@/lib/ai/indexer'
 
 export interface JournalQueryResult {
   entries: JournalEntry[]
@@ -162,6 +163,24 @@ export async function createJournalEntryAction(
     return { error: error.message }
   }
 
+  // Automatic privacy-aware knowledge synchronization for journal entry
+  // Respects user preference: if include_journal is false (default), chunks are omitted
+  try {
+    await syncWorkspaceItemToKnowledge(supabase, {
+      userId: user.id,
+      sourceType: 'journal',
+      sourceId: data.id,
+      title: data.title || 'Untitled Reflection',
+      rawContent: data.content,
+      metadata: {
+        entryDate: data.entry_date,
+        mood: data.mood,
+      },
+    })
+  } catch (ingestErr) {
+    console.warn('[Journal Ingestion] Failed to check/index journal entry:', ingestErr)
+  }
+
   revalidatePath('/app/journal')
   revalidatePath('/app')
 
@@ -233,6 +252,32 @@ export async function updateJournalEntryAction(
     return { success: false, error: error.message }
   }
 
+  // Automatic knowledge synchronization for updated journal entry
+  try {
+    const { data: updatedEntry } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (updatedEntry) {
+      await syncWorkspaceItemToKnowledge(supabase, {
+        userId: user.id,
+        sourceType: 'journal',
+        sourceId: updatedEntry.id,
+        title: updatedEntry.title || 'Untitled Reflection',
+        rawContent: updatedEntry.content,
+        metadata: {
+          entryDate: updatedEntry.entry_date,
+          mood: updatedEntry.mood,
+        },
+      })
+    }
+  } catch (ingestErr) {
+    console.warn('[Journal Ingestion] Failed to update journal index:', ingestErr)
+  }
+
   revalidatePath('/app/journal')
   revalidatePath('/app')
   return { success: true }
@@ -250,6 +295,13 @@ export async function deleteJournalEntryAction(id: string): Promise<{ success: b
 
   if (!user) {
     return { success: false, error: 'Unauthorized' }
+  }
+
+  // Knowledge chunk removal for deleted journal entry
+  try {
+    await removeSourceKnowledgeChunks(supabase, user.id, 'journal', id)
+  } catch (ingestErr) {
+    console.warn('[Journal Ingestion] Failed to remove journal index chunks:', ingestErr)
   }
 
   const { error } = await supabase

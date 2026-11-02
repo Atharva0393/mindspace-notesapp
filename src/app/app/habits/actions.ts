@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Habit, HabitLog, HabitCreateInput, HabitUpdateInput, HabitLogStatus } from '@/types/habits'
 import { Database } from '@/types/database'
+import { syncWorkspaceItemToKnowledge, removeSourceKnowledgeChunks } from '@/lib/ai/indexer'
 
 export interface HabitsQueryResult {
   habits: Habit[]
@@ -120,6 +121,23 @@ export async function createHabitAction(input: HabitCreateInput): Promise<{ habi
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Automatic knowledge ingestion for created habit
+  try {
+    await syncWorkspaceItemToKnowledge(supabase, {
+      userId: user.id,
+      sourceType: 'habit',
+      sourceId: data.id,
+      title: data.title,
+      rawContent: data.description || '',
+      metadata: {
+        category: data.category,
+        frequency: data.frequency,
+      },
+    })
+  } catch (ingestErr) {
+    console.warn('[Habits Ingestion] Failed to index habit:', ingestErr)
   }
 
   revalidatePath('/app/habits')
@@ -261,6 +279,32 @@ export async function updateHabitAction(
     return { success: false, error: error.message }
   }
 
+  // Automatic knowledge synchronization for updated habit
+  try {
+    const { data: updatedHabit } = await supabase
+      .from('habits')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (updatedHabit) {
+      await syncWorkspaceItemToKnowledge(supabase, {
+        userId: user.id,
+        sourceType: 'habit',
+        sourceId: updatedHabit.id,
+        title: updatedHabit.title,
+        rawContent: updatedHabit.description || '',
+        metadata: {
+          category: updatedHabit.category,
+          frequency: updatedHabit.frequency,
+        },
+      })
+    }
+  } catch (ingestErr) {
+    console.warn('[Habits Ingestion] Failed to update habit index:', ingestErr)
+  }
+
   revalidatePath('/app/habits')
   return { success: true }
 }
@@ -277,6 +321,13 @@ export async function deleteHabitAction(id: string): Promise<{ success: boolean;
 
   if (!user) {
     return { success: false, error: 'Unauthorized' }
+  }
+
+  // Automatic knowledge chunk removal for deleted habit
+  try {
+    await removeSourceKnowledgeChunks(supabase, user.id, 'habit', id)
+  } catch (ingestErr) {
+    console.warn('[Habits Ingestion] Failed to remove habit index chunks:', ingestErr)
   }
 
   const { error } = await supabase

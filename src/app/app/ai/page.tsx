@@ -178,9 +178,10 @@ export default function AIPage() {
 
     setIsSending(true)
 
-    // Optimistic user message
+    // Optimistic user message with valid UUID
+    const userMsgId = crypto.randomUUID()
     const tempUserMsg: AIMessage = {
-      id: `msg-user-${Date.now()}`,
+      id: userMsgId,
       conversationId: convId,
       role: 'user',
       content: text,
@@ -191,11 +192,11 @@ export default function AIPage() {
     saveLocalAIMessage(tempUserMsg)
 
     try {
-      const result = await sendAIMessageAction(convId, text, preferences)
+      const result = await sendAIMessageAction(convId, text, preferences, undefined, userMsgId)
 
       if (result.status === 'gemini_key_missing') {
         const noticeMsg: AIMessage = {
-          id: `msg-notice-${Date.now()}`,
+          id: crypto.randomUUID(),
           conversationId: convId,
           role: 'assistant',
           content:
@@ -206,12 +207,15 @@ export default function AIPage() {
         setMessages((prev) => [...prev, noticeMsg])
         saveLocalAIMessage(noticeMsg)
       } else if (result.status === 'success' && result.data?.assistantMessage) {
+        if (result.data.conversationId && result.data.conversationId !== convId) {
+          setActiveConversationId(result.data.conversationId)
+        }
         const assistantMsg = result.data.assistantMessage
         setMessages((prev) => [...prev, assistantMsg])
         saveLocalAIMessage(assistantMsg)
       } else {
         const errorMsg: AIMessage = {
-          id: `msg-error-${Date.now()}`,
+          id: crypto.randomUUID(),
           conversationId: convId,
           role: 'assistant',
           content: result.error || 'Failed to contact Gemini API. Please try again.',
@@ -224,7 +228,7 @@ export default function AIPage() {
     } catch (err: unknown) {
       const errorObj = err instanceof Error ? err : new Error(String(err))
       const errorMsg: AIMessage = {
-        id: `msg-error-${Date.now()}`,
+        id: crypto.randomUUID(),
         conversationId: convId,
         role: 'assistant',
         content: `Error: ${errorObj.message || 'Network error occurred.'}`,

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Note, Folder, NoteFilter, NoteSort, NoteCreateInput, NoteUpdateInput } from '@/types/notes'
 import { Database, Json } from '@/types/database'
+import { syncWorkspaceItemToKnowledge, removeSourceKnowledgeChunks } from '@/lib/ai/indexer'
 
 export interface NotesQueryResult {
   notes: Note[]
@@ -205,6 +206,24 @@ export async function createNoteAction(input: NoteCreateInput): Promise<{ note?:
     return { error: error.message }
   }
 
+  // Automatic knowledge ingestion for the created note
+  try {
+    await syncWorkspaceItemToKnowledge(supabase, {
+      userId: user.id,
+      sourceType: 'note',
+      sourceId: data.id,
+      title: data.title,
+      rawContent: data.content,
+      isTrashed: data.is_trashed,
+      metadata: {
+        folderId: data.folder_id,
+        tags: data.tags,
+      },
+    })
+  } catch (ingestErr) {
+    console.warn('[Notes Ingestion] Failed to index new note:', ingestErr)
+  }
+
   revalidatePath('/app/notes')
   return {
     note: {
@@ -268,6 +287,37 @@ export async function updateNoteAction(
     return { success: false, error: error.message }
   }
 
+  // Automatic knowledge synchronization for updated note
+  try {
+    if (input.isTrashed === true) {
+      await removeSourceKnowledgeChunks(supabase, user.id, 'note', id)
+    } else {
+      const { data: updatedNote } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (updatedNote) {
+        await syncWorkspaceItemToKnowledge(supabase, {
+          userId: user.id,
+          sourceType: 'note',
+          sourceId: updatedNote.id,
+          title: updatedNote.title,
+          rawContent: updatedNote.content,
+          isTrashed: updatedNote.is_trashed,
+          metadata: {
+            folderId: updatedNote.folder_id,
+            tags: updatedNote.tags,
+          },
+        })
+      }
+    }
+  } catch (ingestErr) {
+    console.warn('[Notes Ingestion] Failed to update note index:', ingestErr)
+  }
+
   revalidatePath('/app/notes')
   return { success: true }
 }
@@ -287,6 +337,13 @@ export async function deleteNoteAction(
 
   if (!user) {
     return { success: false, error: 'Unauthorized' }
+  }
+
+  // Knowledge chunk removal on deletion or trashing
+  try {
+    await removeSourceKnowledgeChunks(supabase, user.id, 'note', id)
+  } catch (ingestErr) {
+    console.warn('[Notes Ingestion] Failed to remove note index chunks:', ingestErr)
   }
 
   if (permanent) {

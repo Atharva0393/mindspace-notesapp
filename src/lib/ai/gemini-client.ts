@@ -189,7 +189,7 @@ export async function generateCompanionResponse(options: {
     const { cleanContent, action } = extractProposedAction(rawText)
 
     const assistantMessage: AIMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: crypto.randomUUID(),
       conversationId: '', // Filled by caller
       role: 'assistant',
       content: cleanContent,

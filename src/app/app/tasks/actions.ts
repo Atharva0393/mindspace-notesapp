@@ -5,6 +5,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Task, TaskCreateInput, TaskUpdateInput, TaskFilter, TaskSort } from '@/types/tasks'
 import { createNextOccurrence } from '@/lib/tasks/recurrence'
 import { Database } from '@/types/database'
+import { syncWorkspaceItemToKnowledge, removeSourceKnowledgeChunks } from '@/lib/ai/indexer'
 
 export interface TasksQueryResult {
   tasks: Task[]
@@ -133,6 +134,26 @@ export async function createTaskAction(input: TaskCreateInput): Promise<{ task?:
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Automatic knowledge ingestion for the created task
+  try {
+    await syncWorkspaceItemToKnowledge(supabase, {
+      userId: user.id,
+      sourceType: 'task',
+      sourceId: data.id,
+      title: data.title,
+      rawContent: data.description || '',
+      metadata: {
+        priority: data.priority,
+        status: data.status,
+        dueDate: data.due_date,
+        project: data.project,
+        tags: data.tags,
+      },
+    })
+  } catch (ingestErr) {
+    console.warn('[Tasks Ingestion] Failed to index task:', ingestErr)
   }
 
   revalidatePath('/app/tasks')
@@ -284,6 +305,35 @@ export async function updateTaskAction(
     return { success: false, error: error.message }
   }
 
+  // Automatic knowledge synchronization for updated task
+  try {
+    const { data: updatedTask } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (updatedTask) {
+      await syncWorkspaceItemToKnowledge(supabase, {
+        userId: user.id,
+        sourceType: 'task',
+        sourceId: updatedTask.id,
+        title: updatedTask.title,
+        rawContent: updatedTask.description || '',
+        metadata: {
+          priority: updatedTask.priority,
+          status: updatedTask.status,
+          dueDate: updatedTask.due_date,
+          project: updatedTask.project,
+          tags: updatedTask.tags,
+        },
+      })
+    }
+  } catch (ingestErr) {
+    console.warn('[Tasks Ingestion] Failed to update task index:', ingestErr)
+  }
+
   revalidatePath('/app/tasks')
   revalidatePath('/app')
   return { success: true }
@@ -301,6 +351,13 @@ export async function deleteTaskAction(id: string): Promise<{ success: boolean; 
 
   if (!user) {
     return { success: false, error: 'Unauthorized' }
+  }
+
+  // Automatic knowledge chunk removal for deleted task
+  try {
+    await removeSourceKnowledgeChunks(supabase, user.id, 'task', id)
+  } catch (ingestErr) {
+    console.warn('[Tasks Ingestion] Failed to remove task index chunks:', ingestErr)
   }
 
   const { error } = await supabase
